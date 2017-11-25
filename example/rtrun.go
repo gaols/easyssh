@@ -18,16 +18,12 @@ func main() {
 	}
 
 	// Call Run method with command you want to run on remote server.
-	done, err := ssh.RtRun("ps aufx", func(stdoutLine string) {
-		fmt.Println(stdoutLine)
-	}, func(errLine string) {
-		fmt.Println(errLine)
-	}, 60)
+	stdout, stderr, done, err := ssh.Run("ps ax", 60)
 	// Handle errors
 	if err != nil {
 		panic("Can't run remote command: " + err.Error())
 	} else {
-		fmt.Println("don is :", done)
+		fmt.Println("don is :", done, "stdout is :", stdout, ";   stderr is :", stderr)
 	}
 
 }

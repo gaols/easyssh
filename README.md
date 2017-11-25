@@ -10,4 +10,6 @@ Do not need to think about Dials, sessions, defers and public keys...Let easyssh
 
 [Run a command on remote server and get STDOUT output](https://github.com/hypersleep/easyssh/blob/master/example/run.go)
 
+[Run a command on remote server and get STDOUT output line by line](https://github.com/hypersleep/easyssh/blob/master/example/rtrun.go)
+
 [Upload a file to remote server](https://github.com/hypersleep/easyssh/blob/master/example/scp.go)
