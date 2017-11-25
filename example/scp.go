@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/hypersleep/easyssh"
+	"github.com/gaols/easyssh"
 )
 
 func main() {
-	// Create MakeConfig instance with remote username, server address and path to private key.
-	ssh := &easyssh.MakeConfig{
+	// Create SSHConfig instance with remote username, server address and path to private key.
+	ssh := &easyssh.SSHConfig{
 		User:     "root",
 		Server:   "example.com",
 		Password: "123qwe",

@@ -26,7 +26,7 @@ import (
 // Port is SSH server port on remote machine.
 // Note: easyssh looking for private key in user's home directory (ex. /home/john + Key).
 // Then ensure your Key begins from '/' (ex. /.ssh/id_rsa)
-type MakeConfig struct {
+type SSHConfig struct {
 	User     string
 	Server   string
 	Key      string
@@ -42,22 +42,22 @@ func getKeyFile(keypath string) (ssh.Signer, error) {
 		return nil, err
 	}
 
-	file := usr.HomeDir + keypath
+	file := filepath.Join(usr.HomeDir, keypath)
 	buf, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
 
-	pubkey, err := ssh.ParsePrivateKey(buf)
+	pubKey, err := ssh.ParsePrivateKey(buf)
 	if err != nil {
 		return nil, err
 	}
 
-	return pubkey, nil
+	return pubKey, nil
 }
 
-// connects to remote server using MakeConfig struct and returns *ssh.Session
-func (ssh_conf *MakeConfig) connect() (*ssh.Session, error) {
+// connects to remote server using SSHConfig struct and returns *ssh.Session
+func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 	// auths holds the detected ssh auth methods
 	auths := []ssh.AuthMethod{}
 
@@ -71,8 +71,8 @@ func (ssh_conf *MakeConfig) connect() (*ssh.Session, error) {
 		defer sshAgent.Close()
 	}
 
-	if pubkey, err := getKeyFile(ssh_conf.Key); err == nil {
-		auths = append(auths, ssh.PublicKeys(pubkey))
+	if pubKey, err := getKeyFile(ssh_conf.Key); err == nil {
+		auths = append(auths, ssh.PublicKeys(pubKey))
 	}
 
 	config := &ssh.ClientConfig{
@@ -96,12 +96,13 @@ func (ssh_conf *MakeConfig) connect() (*ssh.Session, error) {
 // Stream returns one channel that combines the stdout and stderr of the command
 // as it is run on the remote machine, and another that sends true when the
 // command is done. The sessions and channels will then be closed.
-func (ssh_conf *MakeConfig) Stream(command string, timeout int) (stdout chan string, stderr chan string, done chan bool, err error) {
+func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan string, stderr chan string, done chan bool, err error) {
 	// connect to remote host
 	session, err := ssh_conf.connect()
 	if err != nil {
 		return stdout, stderr, done, err
 	}
+
 	// connect to both outputs (they are of type io.Reader)
 	outReader, err := session.StdoutPipe()
 	if err != nil {
@@ -122,13 +123,10 @@ func (ssh_conf *MakeConfig) Stream(command string, timeout int) (stdout chan str
 	stderrChan := make(chan string)
 	done = make(chan bool)
 
-	go func(stdoutScanner, stderrScanner *bufio.Scanner, stdoutChan, stderrChan chan string, done chan bool) {
+	go func() {
 		defer close(stdoutChan)
 		defer close(stderrChan)
 		defer close(done)
-
-		timeoutChan := time.After(time.Duration(timeout) * time.Second)
-		res := make(chan bool, 1)
 
 		go func() {
 			for stdoutScanner.Scan() {
@@ -137,50 +135,68 @@ func (ssh_conf *MakeConfig) Stream(command string, timeout int) (stdout chan str
 			for stderrScanner.Scan() {
 				stderrChan <- stderrScanner.Text()
 			}
-			// close all of our open resources
-			res <- true
+			done <- true
 		}()
 
+		timeoutChan := time.After(time.Duration(timeout) * time.Second)
 		select {
-		case <-res:
-			stdoutChan <- ""
-			stderrChan <- ""
-			done <- true
+		case r := <-done:
+			done <- r
 		case <-timeoutChan:
-			stdoutChan <- ""
-			stderrChan <- "Run Command Timeout!"
+			stderrChan <- fmt.Sprintf("Run command timeout: %s", command)
 			done <- false
 		}
+	}()
 
-		session.Close()
-	}(stdoutScanner, stderrScanner, stdoutChan, stderrChan, done)
 	return stdoutChan, stderrChan, done, err
 }
 
 // Runs command on remote machine and returns its stdout as a string
-func (ssh_conf *MakeConfig) Run(command string, timeout int) (outStr string, errStr string, isTimeout bool, err error) {
+func (ssh_conf *SSHConfig) Run(command string, timeout int) (outStr string, errStr string, isTimeout bool, err error) {
 	stdoutChan, stderrChan, doneChan, err := ssh_conf.Stream(command, timeout)
 	if err != nil {
 		return outStr, errStr, isTimeout, err
 	}
 	// read from the output channel until the done signal is passed
-	stillGoing := true
-	for stillGoing {
+L:
+	for {
 		select {
 		case isTimeout = <-doneChan:
-			stillGoing = false
-		case outline := <-stdoutChan:
-			outStr += outline + "\n"
-		case errline := <-stderrChan:
-			errStr += errline + "\n"
+			break L
+		case outLine := <-stdoutChan:
+			outStr += outLine + "\n"
+		case errLine := <-stderrChan:
+			errStr += errLine + "\n"
 		}
 	}
 	// return the concatenation of all signals from the output channel
 	return outStr, errStr, isTimeout, err
 }
 
+func (ssh_conf *SSHConfig) RtRun(command string, stdLineHandler, errLineHandler func(string), timeout int) (isTimeout bool, err error) {
+	stdoutChan, stderrChan, doneChan, err := ssh_conf.Stream(command, timeout)
+	if err != nil {
+		return isTimeout, err
+	}
+	// read from the output channel until the done signal is passed
+L:
+	for {
+		select {
+		case isTimeout = <-doneChan:
+			break L
+		case outLine := <-stdoutChan:
+			stdLineHandler(outLine)
+		case errLine := <-stderrChan:
+			errLineHandler(errLine)
+		}
+	}
+	// return the concatenation of all signals from the output channel
+	return isTimeout, err
+}
+
 // Scp uploads sourceFile to remote machine like native scp console app.
-func (ssh_conf *MakeConfig) Scp(sourceFile string, etargetFile string) error {
+// targetPath should be an absolute file path including filename and cannot be a dir.
+func (ssh_conf *SSHConfig) Scp(srcFilePath string, destFilePath string) error {
 	session, err := ssh_conf.connect()
 
 	if err != nil {
@@ -188,38 +204,26 @@ func (ssh_conf *MakeConfig) Scp(sourceFile string, etargetFile string) error {
 	}
 	defer session.Close()
 
-	targetFile := filepath.Base(etargetFile)
-
-	src, srcErr := os.Open(sourceFile)
-
-	if srcErr != nil {
-		return srcErr
+	src, err := os.Open(srcFilePath)
+	if err != nil {
+		return err
 	}
+	defer src.Close()
 
-	srcStat, statErr := src.Stat()
-
-	if statErr != nil {
-		return statErr
+	stat, err := src.Stat()
+	if err != nil {
+		return err
 	}
 
 	go func() {
 		w, _ := session.StdinPipe()
-
-		fmt.Fprintln(w, "C0644", srcStat.Size(), targetFile)
-
-		if srcStat.Size() > 0 {
+		fmt.Fprintln(w, "C0644", stat.Size(), filepath.Base(destFilePath))
+		if stat.Size() > 0 {
 			io.Copy(w, src)
-			fmt.Fprint(w, "\x00")
-			w.Close()
-		} else {
-			fmt.Fprint(w, "\x00")
-			w.Close()
 		}
+		fmt.Fprint(w, "\x00")
+		w.Close()
 	}()
 
-	if err := session.Run(fmt.Sprintf("scp -tr %s", etargetFile)); err != nil {
-		return err
-	}
-
-	return nil
+	return session.Run(fmt.Sprintf("scp -tr %s", destFilePath))
 }

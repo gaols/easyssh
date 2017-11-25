@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-var sshConfig = &MakeConfig{
+var sshConfig = &SSHConfig{
 	User:     "root",
 	Server:   "172.30.19.2",
 	Password: "password",
