@@ -9,7 +9,7 @@ import (
 
 // SCopy copy localDirPath to the remote dir specified by remoteDirPath,
 // Be aware that localDirPath and remoteDirPath should exists before SCopy.
-func (config *SSHConfig) SCopy(localDirPath, remoteDirPath string, verbose bool) error {
+func (ssh_conf *SSHConfig) SCopy(localDirPath, remoteDirPath string, verbose bool) error {
 	localDirPath = RemoveTrailingSlash(localDirPath)
 	remoteDirPath = RemoveTrailingSlash(remoteDirPath)
 
@@ -21,7 +21,7 @@ func (config *SSHConfig) SCopy(localDirPath, remoteDirPath string, verbose bool)
 	localDirname := filepath.Base(localDirPath)
 	tgzName := fmt.Sprintf("%s_%s.tar.gz", Sha1(fmt.Sprintf("%s_%d", localDirPath, time.Now().UnixNano())), localDirname)
 	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName)
-	defer config.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), 24*3600)
+	defer ssh_conf.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), 24*3600)
 
 	_, err := Local("cd %s;tar czf %s %s", localDirParentPath, tgzName, localDirname)
 	if err != nil {
@@ -29,7 +29,7 @@ func (config *SSHConfig) SCopy(localDirPath, remoteDirPath string, verbose bool)
 	}
 
 	tgzPath := filepath.Join(localDirParentPath, tgzName)
-	if err = config.Scp(tgzPath, filepath.Join(remoteDirPath, tgzName)); err != nil {
+	if err = ssh_conf.Scp(tgzPath, filepath.Join(remoteDirPath, tgzName)); err != nil {
 		if verbose {
 			fmt.Printf("upload %s -> %s error\n", localDirPath, remoteDirPath)
 		}
@@ -40,7 +40,7 @@ func (config *SSHConfig) SCopy(localDirPath, remoteDirPath string, verbose bool)
 		fmt.Printf("upload %s -> %s done\n", localDirPath, remoteDirPath)
 	}
 
-	timeout, err := config.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(i string) {
+	timeout, err := ssh_conf.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(i string) {
 		if verbose {
 			fmt.Println(i)
 		}
