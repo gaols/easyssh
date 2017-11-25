@@ -161,7 +161,8 @@ func (ssh_conf *SSHConfig) Run(command string, timeout int) (outStr string, errS
 L:
 	for {
 		select {
-		case isTimeout = <-doneChan:
+		case done:= <-doneChan:
+			isTimeout = !done
 			break L
 		case outLine := <-stdoutChan:
 			outStr += outLine + "\n"
