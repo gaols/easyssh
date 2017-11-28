@@ -15,7 +15,7 @@ func main() {
 	}
 
 	// Call Scp method with file you want to upload to remote server.
-	err := ssh.SCopy("/dirpath/to/copy", "/tmp/", true)
+	err := ssh.SCopy("/dirpath/to/copy", "/tmp/", 1, true)
 
 	// Handle errors
 	if err != nil {

@@ -12,5 +12,5 @@ func TestSCopy(t *testing.T) {
 		Password: "******",
 	}
 
-	config.SCopy("/home/gaols/Codes/go/src/github.com/gaols/easyssh/", "/tmp", true)
+	config.SCopy("/home/gaols/Codes/go/src/github.com/gaols/easyssh/", "/tmp", 1, true)
 }
