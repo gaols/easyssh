@@ -183,7 +183,8 @@ func (ssh_conf *SSHConfig) RtRun(command string, stdLineHandler, errLineHandler 
 L:
 	for {
 		select {
-		case isTimeout = <-doneChan:
+		case done := <-doneChan:
+			isTimeout = !done
 			break L
 		case outLine := <-stdoutChan:
 			stdLineHandler(outLine)

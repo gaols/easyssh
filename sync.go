@@ -9,6 +9,7 @@ import (
 
 // SCopy copy localDirPath to the remote dir specified by remoteDirPath,
 // Be aware that localDirPath and remoteDirPath should exists before SCopy.
+// At last, you should know, timeout is not reliable.
 func (ssh_conf *SSHConfig) SCopy(localDirPath, remoteDirPath string, timeout int, verbose bool) error {
 	localDirPath = RemoveTrailingSlash(localDirPath)
 	remoteDirPath = RemoveTrailingSlash(remoteDirPath)
@@ -37,16 +38,16 @@ func (ssh_conf *SSHConfig) SCopy(localDirPath, remoteDirPath string, timeout int
 		return err
 	}
 
-	if verbose {
-		fmt.Printf("upload %s done\n", copyM)
-	}
-
 	isTimeout, err := ssh_conf.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(i string) {
 	}, func(errLine string) {
 		if verbose {
 			fmt.Println(errLine)
 		}
 	}, timeout)
+
+	if verbose {
+		fmt.Printf("upload %s done\n", copyM)
+	}
 
 	if err != nil {
 		return errors.New("extract tgz error: " + err.Error())
@@ -57,4 +58,37 @@ func (ssh_conf *SSHConfig) SCopy(localDirPath, remoteDirPath string, timeout int
 	}
 
 	return nil
+}
+
+// SCopyM copy multiple local dir to their corresponding remote dir specified by para pathMappings.
+// timeout is not reliable.
+func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, verbose bool) error {
+	errCh := make(chan error, len(pathMappings))
+	doneCh := make(chan bool, len(pathMappings))
+	var err error
+	for localDir, remoteDir := range pathMappings {
+		go func(local, remote string) {
+			if err == nil {
+				if err = ssh_conf.SCopy(local, remote, timeout, verbose); err != nil {
+					errCh <- err
+				} else {
+					doneCh <- true
+				}
+			}
+		}(localDir, remoteDir)
+	}
+
+	timeoutChan := time.After(time.Duration(timeout) * time.Second)
+L:
+	for i := 0; i < len(pathMappings); i++ {
+		select {
+		case <-doneCh:
+		case err = <-errCh:
+			break L
+		case <-timeoutChan:
+			err = errors.New("SCopyM timeout error")
+			break L
+		}
+	}
+	return err
 }
