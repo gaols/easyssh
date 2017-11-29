@@ -198,9 +198,8 @@ L:
 
 // Scp uploads sourceFile to remote machine like native scp console app.
 // targetPath should be an absolute file path including filename and cannot be a dir.
-func (ssh_conf *SSHConfig) Scp(srcFilePath string, destFilePath string) error {
+func (ssh_conf *SSHConfig) Scp(srcFilePath, destFilePath string) error {
 	session, err := ssh_conf.connect()
-
 	if err != nil {
 		return err
 	}
@@ -210,7 +209,6 @@ func (ssh_conf *SSHConfig) Scp(srcFilePath string, destFilePath string) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
 
 	stat, err := src.Stat()
 	if err != nil {
@@ -219,12 +217,13 @@ func (ssh_conf *SSHConfig) Scp(srcFilePath string, destFilePath string) error {
 
 	go func() {
 		w, _ := session.StdinPipe()
-		fmt.Fprintln(w, "C0644", stat.Size(), filepath.Base(destFilePath))
+		fmt.Fprintf(w, "C%#o %d %s\n", stat.Mode().Perm(), stat.Size(), filepath.Base(destFilePath))
 		if stat.Size() > 0 {
 			io.Copy(w, src)
 		}
 		fmt.Fprint(w, "\x00")
 		w.Close()
+		src.Close()
 	}()
 
 	return session.Run(fmt.Sprintf("scp -tr %s", destFilePath))

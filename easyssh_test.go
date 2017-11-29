@@ -2,12 +2,13 @@ package easyssh
 
 import (
 	"testing"
+	"fmt"
 )
 
 var sshConfig = &SSHConfig{
-	User:     "root",
-	Server:   "172.30.19.2",
-	Password: "password",
+	User:     "gaols",
+	Server:   "192.168.2.155",
+	Password: "gaolsz",
 	//Key:  "/.ssh/id_rsa",
 	Port: "22",
 }
@@ -56,5 +57,18 @@ func TestRun(t *testing.T) {
 		if stdout == "" {
 			t.Errorf("Output was empty for command: %s,%s,%s", cmd, stdout, stderr, istimeout)
 		}
+	}
+}
+
+func TestSSHConfig_Scp(t *testing.T) {
+	// Call Scp method with file you want to upload to remote server.
+	err := sshConfig.Scp("/home/gaols/untitled1.html", "/tmp/target.html")
+
+	// Handle errors
+	if err != nil {
+		panic("Can't run remote command: " + err.Error())
+	} else {
+		fmt.Println("success")
+
 	}
 }
