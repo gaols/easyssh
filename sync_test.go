@@ -10,7 +10,7 @@ func TestSSHConfig_SCopy(t *testing.T) {
 		User:     "gaols",
 		Server:   "192.168.2.155",
 		Port:     "22",
-		Password: "gaolsz",
+		Password: "******",
 	}
 
 	config.Scp("/home/gaols/Codes/go/src/github.com/gaols/easyssh/", "/tmp")
@@ -21,7 +21,7 @@ func TestSSHConfig_SCopyM(t *testing.T) {
 		User:     "gaols",
 		Server:   "192.168.2.155",
 		Port:     "22",
-		Password: "gaolsz",
+		Password: "******",
 	}
 
 	pathMappings := map[string]string{

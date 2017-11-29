@@ -10,7 +10,7 @@ func main() {
 	ssh := &easyssh.SSHConfig{
 		User:     "root",
 		Server:   "example.com",
-		Password: "123qwe",
+		Password: "******",
 		Port:     "22",
 	}
 
