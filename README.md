@@ -22,6 +22,12 @@ sshconfig := &easyssh.SSHConfig{...}
 sshconfig.ScpM(pathmapping)
 ```
 
+## Install
+
+```
+go get github.com/gaols/easyssh
+```
+
 ## So easy to use
 
 [Run a command on remote server and get STDOUT output](https://github.com/gaols/easyssh/blob/master/example/run.go)
