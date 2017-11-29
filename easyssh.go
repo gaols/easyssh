@@ -202,7 +202,7 @@ L:
 
 // Scp uploads localPath to remotePath like native scp console app.
 // Warning: remotePath should contain the file name if the localPath is a regular file,
-// but if the localPath to copy is dir, the remotePath must be the dir to which localPath will be copied.
+// however, if the localPath to copy is dir, the remotePath must be the dir into which the localPath will be copied.
 func (ssh_conf *SSHConfig) Scp(localPath, remotePath string) error {
 	if IsDir(localPath) {
 		return ssh_conf.SCopyDir(localPath, remotePath, -1, true)

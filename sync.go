@@ -92,21 +92,17 @@ func (ssh_conf *SSHConfig) SCopyFile(srcFilePath, destFilePath string) error {
 	})
 }
 
-// SCopyM copy multiple local dir to their corresponding remote dir specified by para pathMappings.
-// timeout is not reliable.
+// SCopyM copy multiple local path to their corresponding remote path specified by para pathMappings.
+// Warning: to copy a local file, the remote path should contains the filename, however, to copy
+// a local dir, the remote path must be a dir into which the local path will be copied.
 func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, verbose bool) error {
-	if -1 == timeout {
-		// a long timeout simulate wait forever
-		timeout = 24 * 3600
-	}
-
 	errCh := make(chan error, len(pathMappings))
 	doneCh := make(chan bool, len(pathMappings))
 	var err error
 	for localDir, remoteDir := range pathMappings {
 		go func(local, remote string) {
 			if err == nil {
-				if err = ssh_conf.SCopyDir(local, remote, timeout, verbose); err != nil {
+				if err = ssh_conf.Scp(local, remote); err != nil {
 					errCh <- err
 				} else {
 					doneCh <- true
@@ -115,6 +111,10 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 		}(localDir, remoteDir)
 	}
 
+	if -1 == timeout {
+		// a long timeout simulate wait forever
+		timeout = 24 * 3600
+	}
 	timeoutChan := time.After(time.Duration(timeout) * time.Second)
 L:
 	for i := 0; i < len(pathMappings); i++ {
