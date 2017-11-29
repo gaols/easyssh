@@ -138,6 +138,10 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan stri
 			done <- true
 		}()
 
+		if -1 == timeout {
+			// a long timeout simulate wait forever
+			timeout = 24 * 3600
+		}
 		timeoutChan := time.After(time.Duration(timeout) * time.Second)
 		select {
 		case r := <-done:

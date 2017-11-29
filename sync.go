@@ -21,11 +21,6 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 		return errors.New("no such dir: " + localDirPath)
 	}
 
-	if -1 == timeout {
-		// a long timeout simulate wait forever
-		timeout = 24 * 3600
-	}
-
 	localDirParentPath := filepath.Dir(localDirPath)
 	localDirname := filepath.Base(localDirPath)
 	tgzName := fmt.Sprintf("%s_%s.tar.gz", Sha1(fmt.Sprintf("%s_%d", localDirPath, time.Now().UnixNano())), localDirname)
