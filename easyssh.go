@@ -196,35 +196,23 @@ L:
 	return isTimeout, err
 }
 
-// Scp uploads sourceFile to remote machine like native scp console app.
-// targetPath should be an absolute file path including filename and cannot be a dir.
-func (ssh_conf *SSHConfig) Scp(srcFilePath, destFilePath string) error {
-	session, err := ssh_conf.connect()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	src, err := os.Open(srcFilePath)
-	if err != nil {
-		return err
+// Scp uploads localPath to remotePath like native scp console app.
+// Warning: remotePath should contain the file name if the localPath is a regular file,
+// but if the localPath to copy is dir, the remotePath must be the dir to which localPath will be copied.
+func (ssh_conf *SSHConfig) Scp(localPath, remotePath string) error {
+	if IsDir(localPath) {
+		return ssh_conf.SCopyDir(localPath, remotePath, -1, true)
 	}
 
-	stat, err := src.Stat()
-	if err != nil {
-		return err
+	if IsRegular(localPath) {
+		return ssh_conf.SCopyFile(localPath, remotePath)
 	}
 
-	go func() {
-		w, _ := session.StdinPipe()
-		fmt.Fprintf(w, "C%#o %d %s\n", stat.Mode().Perm(), stat.Size(), filepath.Base(destFilePath))
-		if stat.Size() > 0 {
-			io.Copy(w, src)
-		}
-		fmt.Fprint(w, "\x00")
-		w.Close()
-		src.Close()
-	}()
+	panic("invalid local path: " + localPath)
+}
 
-	return session.Run(fmt.Sprintf("scp -tr %s", destFilePath))
+// SCopyM copy multiple local dir to their corresponding remote dir specified by para pathMappings.
+// Warning: timeout is not reliable.
+func (ssh_conf *SSHConfig) ScpM(dirPathMappings map[string]string) error {
+	return ssh_conf.SCopyM(dirPathMappings, -1, true)
 }

@@ -8,27 +8,27 @@ import (
 func TestSSHConfig_SCopy(t *testing.T) {
 	config := &SSHConfig{
 		User:     "gaols",
-		Server:   "192.168.2.100",
+		Server:   "192.168.2.155",
 		Port:     "22",
-		Password: "******",
+		Password: "gaolsz",
 	}
 
-	config.SCopy("/home/gaols/Codes/go/src/github.com/gaols/easyssh/", "/tmp", 1, true)
+	config.Scp("/home/gaols/Codes/go/src/github.com/gaols/easyssh/", "/tmp")
 }
 
 func TestSSHConfig_SCopyM(t *testing.T) {
 	config := &SSHConfig{
 		User:     "gaols",
-		Server:   "192.168.2.100",
+		Server:   "192.168.2.155",
 		Port:     "22",
-		Password: "******",
+		Password: "gaolsz",
 	}
 
 	pathMappings := map[string]string{
 		"/home/gaols/Codes/go/src/github.com/gaols/easyssh/": "/tmp",
 		"/home/gaols/Codes/go/src/github.com/gaols/easydeploy/": "/tmp",
 	}
-	err := config.SCopyM(pathMappings, 5, true)
+	err := config.ScpM(pathMappings)
 	if err != nil {
 		fmt.Println(err.Error())
 	}

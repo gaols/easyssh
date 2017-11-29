@@ -28,3 +28,23 @@ func RemoveTrailingSlash(path string) string {
 	}
 	return path
 }
+
+func IsDir(path string) bool {
+	stat, err := os.Stat(path)
+	if err != nil {
+		panic("error: " + err.Error())
+	}
+
+	mode := stat.Mode()
+	return mode.IsDir()
+}
+
+func IsRegular(path string) bool {
+	stat, err := os.Stat(path)
+	if err != nil {
+		panic("error: " + err.Error())
+	}
+
+	mode := stat.Mode()
+	return mode.IsRegular()
+}
