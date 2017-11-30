@@ -48,10 +48,6 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 		}
 	}, timeout)
 
-	if verbose {
-		fmt.Printf("upload %s done\n", copyM)
-	}
-
 	if err != nil {
 		return errors.New("extract tgz error: " + err.Error())
 	}
