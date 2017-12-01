@@ -134,3 +134,21 @@ func (ssh_conf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
 	defer session.Close()
 	return fn(session)
 }
+
+// SafeScp first copy localPath to remote /tmp path, then move tmp file to remotePath if upload successfully.
+func (ssh_conf *SSHConfig) SafeScp(localPath, remotePath string) error {
+	if IsDir(localPath) {
+		return ssh_conf.SCopyDir(localPath, remotePath, -1, false)
+	}
+
+	remoteTmpName := Sha1(fmt.Sprintf("%s_%d", localPath, time.Now().UnixNano()))
+	destTmpPath := filepath.Join("/tmp", remoteTmpName)
+	err := ssh_conf.SCopyFile(localPath, destTmpPath)
+	defer ssh_conf.Run(fmt.Sprintf("cd /tmp;rm -f %s", remoteTmpName), -1)
+
+	if err != nil {
+		return err
+	}
+	_, _, _, err = ssh_conf.Run(fmt.Sprintf("mv %s %s", destTmpPath, remotePath), -1)
+	return err
+}

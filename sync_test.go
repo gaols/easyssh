@@ -33,3 +33,14 @@ func TestSSHConfig_SCopyM(t *testing.T) {
 		fmt.Println(err.Error())
 	}
 }
+
+func TestSSHConfig_SafeScp(t *testing.T) {
+	config := &SSHConfig{
+		User:     "gaols",
+		Server:   "192.168.2.155",
+		Port:     "22",
+		Password: "******",
+	}
+
+	config.Scp("/home/gaols/Codes/go/src/github.com/gaols/easyssh/easyssh.go", "/home/gaols/Downloads/easyssh.go")
+}
