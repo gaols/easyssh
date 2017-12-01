@@ -15,7 +15,7 @@ sshconfig := &easyssh.SSHConfig{...}
 sshconfig.Scp(localpath, remotepath)
 ```
 
-ScpM support copy multiple dir to multiple destination on remote simultaneously.
+ScpM support copy multiple files to multiple destination on remote simultaneously.
 
 ```
 sshconfig := &easyssh.SSHConfig{...}
