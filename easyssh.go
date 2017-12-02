@@ -34,6 +34,7 @@ type SSHConfig struct {
 	Key      string
 	Port     string
 	Password string
+	Timeout  int
 }
 
 // returns ssh.Signer from user you running app home path + cutted key path.
@@ -85,6 +86,13 @@ func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 	config := &ssh.ClientConfig{
 		User: ssh_conf.User,
 		Auth: auths,
+	}
+
+	// default maximum amount of time for the TCP connection to establish is 10s
+	if ssh_conf.Timeout > 0 {
+		config.Timeout = time.Duration(ssh_conf.Timeout) * time.Second
+	} else {
+		config.Timeout = time.Duration(10) * time.Second
 	}
 
 	client, err := ssh.Dial("tcp", ssh_conf.Server+":"+ssh_conf.Port, config)
@@ -219,8 +227,7 @@ func (ssh_conf *SSHConfig) Scp(localPath, remotePath string) error {
 	panic("invalid local path: " + localPath)
 }
 
-// SCopyM copy multiple local dir to their corresponding remote dir specified by para pathMappings.
-// Warning: timeout is not reliable.
+// SCopyM copy multiple local file or dir to their corresponding remote path specified by para pathMappings.
 func (ssh_conf *SSHConfig) ScpM(dirPathMappings map[string]string) error {
 	return ssh_conf.SCopyM(dirPathMappings, -1, true)
 }
