@@ -8,14 +8,17 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/user"
 	"path/filepath"
 	"time"
 
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
+)
+
+const (
+	TYPE_STDOUT = 0
+	TYPE_STDERR = 1
 )
 
 // Contains main authority information.
@@ -70,9 +73,9 @@ func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 		ssh_conf.Port = "22"
 	}
 
-	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-		auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
-		defer sshAgent.Close()
+	// Default current user
+	if ssh_conf.User == "" {
+		ssh_conf.User = os.Getenv("USER")
 	}
 
 	if pubKey, err := getKeyFile(ssh_conf.Key); err == nil {
@@ -179,7 +182,7 @@ L:
 	return outStr, errStr, isTimeout, err
 }
 
-func (ssh_conf *SSHConfig) RtRun(command string, stdLineHandler, errLineHandler func(string), timeout int) (isTimeout bool, err error) {
+func (ssh_conf *SSHConfig) RtRun(command string, lineHandler func(string string, lineType int), timeout int) (isTimeout bool, err error) {
 	stdoutChan, stderrChan, doneChan, err := ssh_conf.Stream(command, timeout)
 	if err != nil {
 		return isTimeout, err
@@ -192,9 +195,9 @@ L:
 			isTimeout = !done
 			break L
 		case outLine := <-stdoutChan:
-			stdLineHandler(outLine)
+			lineHandler(outLine, TYPE_STDOUT)
 		case errLine := <-stderrChan:
-			errLineHandler(errLine)
+			lineHandler(errLine, TYPE_STDERR)
 		}
 	}
 	// return the concatenation of all signals from the output channel
