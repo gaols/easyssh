@@ -7,7 +7,6 @@ package easyssh
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -104,19 +103,16 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan stri
 	}
 
 	// connect to both outputs (they are of type io.Reader)
-	outReader, err := session.StdoutPipe()
+	stdOutReader, err := session.StdoutPipe()
 	if err != nil {
 		return stdout, stderr, done, err
 	}
-	errReader, err := session.StderrPipe()
+	stderrReader, err := session.StderrPipe()
 	if err != nil {
 		return stdout, stderr, done, err
 	}
-	// combine outputs, create a line-by-line scanner
-	stdoutReader := io.MultiReader(outReader)
-	stderrReader := io.MultiReader(errReader)
 	err = session.Start(command)
-	stdoutScanner := bufio.NewScanner(stdoutReader)
+	stdoutScanner := bufio.NewScanner(stdOutReader)
 	stderrScanner := bufio.NewScanner(stderrReader)
 	// continuously send the command's output over the channel
 	stdoutChan := make(chan string)
