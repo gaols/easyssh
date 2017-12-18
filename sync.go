@@ -94,7 +94,7 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 	errCh := make(chan error, len(pathMappings))
 	doneCh := make(chan bool, len(pathMappings))
 	var err error
-	for localDir, remoteDir := range pathMappings {
+	for localPath, remotePath := range pathMappings {
 		go func(local, remote string) {
 			if err == nil {
 				if err = ssh_conf.Scp(local, remote); err != nil {
@@ -103,7 +103,7 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 					doneCh <- true
 				}
 			}
-		}(localDir, remoteDir)
+		}(localPath, remotePath)
 	}
 
 	if -1 == timeout {
