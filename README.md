@@ -10,14 +10,14 @@ Do not need to think about Dials, sessions, defers and public keys...Let easyssh
 
 Scp support single file or a directory.
 
-```
+```go
 sshconfig := &easyssh.SSHConfig{...}
 sshconfig.Scp(localpath, remotepath)
 ```
 
-ScpM support copy multiple dir to multiple destination on remote simultaneously.
+ScpM support copy multiple files to multiple destination on remote simultaneously.
 
-```
+```go
 sshconfig := &easyssh.SSHConfig{...}
 sshconfig.ScpM(pathmapping)
 ```

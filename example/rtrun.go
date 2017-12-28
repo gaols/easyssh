@@ -1,26 +1,23 @@
 package main
 
 import (
-	"github.com/gaols/easyssh"
 	"fmt"
+
+	"github.com/gaols/easyssh"
 )
 
 func main() {
 	// Create SSHConfig instance with remote username, server address and path to private key.
 	ssh := &easyssh.SSHConfig{
-		User:   "john",
-		Server: "example.com",
+		User:   "gaols",
+		Server: "192.168.2.155",
 		// Optional key or Password without either we try to contact your agent SOCKET
-		//Password: "password",
-		Key:  "/.ssh/id_rsa",
-		Port: "22",
+		// Password: "******",
 	}
 
 	// Call Run method with command you want to run on remote server.
-	ssh.RtRun("ps ax", func(stdoutLine string) {
+	ssh.RtRun("ps aufx", func(stdoutLine string, lineType int) {
 		fmt.Println(stdoutLine)
-	}, func(errLine string) {
-		fmt.Println(errLine)
 	}, 60)
 
 }

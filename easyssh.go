@@ -7,7 +7,6 @@ package easyssh
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 
 	"net"
@@ -18,6 +17,11 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+)
+
+const (
+	TYPE_STDOUT = 0
+	TYPE_STDERR = 1
 )
 
 // Contains main authority information.
@@ -33,6 +37,7 @@ type SSHConfig struct {
 	Key      string
 	Port     string
 	Password string
+	Timeout  int
 }
 
 // returns ssh.Signer from user you running app home path + cutted key path.
@@ -75,10 +80,26 @@ func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 		auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
 		defer sshAgent.Close()
 	}
+	// Default port 22
+	if ssh_conf.Port == "" {
+		ssh_conf.Port = "22"
+	}
+
+	// Default current user
+	if ssh_conf.User == "" {
+		ssh_conf.User = os.Getenv("USER")
+	}
 
 	config := &ssh.ClientConfig{
 		User: ssh_conf.User,
 		Auth: auths,
+	}
+
+	// default maximum amount of time for the TCP connection to establish is 10s
+	if ssh_conf.Timeout > 0 {
+		config.Timeout = time.Duration(ssh_conf.Timeout) * time.Second
+	} else {
+		config.Timeout = time.Duration(10) * time.Second
 	}
 
 	client, err := ssh.Dial("tcp", ssh_conf.Server+":"+ssh_conf.Port, config)
@@ -105,19 +126,16 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan stri
 	}
 
 	// connect to both outputs (they are of type io.Reader)
-	outReader, err := session.StdoutPipe()
+	stdOutReader, err := session.StdoutPipe()
 	if err != nil {
 		return stdout, stderr, done, err
 	}
-	errReader, err := session.StderrPipe()
+	stderrReader, err := session.StderrPipe()
 	if err != nil {
 		return stdout, stderr, done, err
 	}
-	// combine outputs, create a line-by-line scanner
-	stdoutReader := io.MultiReader(outReader)
-	stderrReader := io.MultiReader(errReader)
 	err = session.Start(command)
-	stdoutScanner := bufio.NewScanner(stdoutReader)
+	stdoutScanner := bufio.NewScanner(stdOutReader)
 	stderrScanner := bufio.NewScanner(stderrReader)
 	// continuously send the command's output over the channel
 	stdoutChan := make(chan string)
@@ -179,7 +197,7 @@ L:
 	return outStr, errStr, isTimeout, err
 }
 
-func (ssh_conf *SSHConfig) RtRun(command string, stdLineHandler, errLineHandler func(string), timeout int) (isTimeout bool, err error) {
+func (ssh_conf *SSHConfig) RtRun(command string, lineHandler func(string string, lineType int), timeout int) (isTimeout bool, err error) {
 	stdoutChan, stderrChan, doneChan, err := ssh_conf.Stream(command, timeout)
 	if err != nil {
 		return isTimeout, err
@@ -192,9 +210,9 @@ L:
 			isTimeout = !done
 			break L
 		case outLine := <-stdoutChan:
-			stdLineHandler(outLine)
+			lineHandler(outLine, TYPE_STDOUT)
 		case errLine := <-stderrChan:
-			errLineHandler(errLine)
+			lineHandler(errLine, TYPE_STDERR)
 		}
 	}
 	// return the concatenation of all signals from the output channel
@@ -216,8 +234,7 @@ func (ssh_conf *SSHConfig) Scp(localPath, remotePath string) error {
 	panic("invalid local path: " + localPath)
 }
 
-// SCopyM copy multiple local dir to their corresponding remote dir specified by para pathMappings.
-// Warning: timeout is not reliable.
+// SCopyM copy multiple local file or dir to their corresponding remote path specified by para pathMappings.
 func (ssh_conf *SSHConfig) ScpM(dirPathMappings map[string]string) error {
 	return ssh_conf.SCopyM(dirPathMappings, -1, true)
 }

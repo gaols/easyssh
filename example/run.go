@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/gaols/easyssh"
 )
 
@@ -18,16 +16,10 @@ func main() {
 	}
 
 	// Call Run method with command you want to run on remote server.
-	done, err := ssh.RtRun("ps aufx", func(stdoutLine string) {
-		fmt.Println(stdoutLine)
-	}, func(errLine string) {
-		fmt.Println(errLine)
-	}, 60)
+	_, _, _, err := ssh.Run("ps aufx", 10)
 	// Handle errors
 	if err != nil {
 		panic("Can't run remote command: " + err.Error())
-	} else {
-		fmt.Println("don is :", done)
 	}
 
 }

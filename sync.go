@@ -41,16 +41,11 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 		return err
 	}
 
-	isTimeout, err := ssh_conf.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(i string) {
-	}, func(errLine string) {
-		if verbose {
-			fmt.Println(errLine)
+	isTimeout, err := ssh_conf.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(line string, lineType int) {
+		if verbose && TYPE_STDERR == lineType {
+			fmt.Println(line)
 		}
 	}, timeout)
-
-	if verbose {
-		fmt.Printf("upload %s done\n", copyM)
-	}
 
 	if err != nil {
 		return errors.New("extract tgz error: " + err.Error())
@@ -99,7 +94,7 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 	errCh := make(chan error, len(pathMappings))
 	doneCh := make(chan bool, len(pathMappings))
 	var err error
-	for localDir, remoteDir := range pathMappings {
+	for localPath, remotePath := range pathMappings {
 		go func(local, remote string) {
 			if err == nil {
 				if err = ssh_conf.Scp(local, remote); err != nil {
@@ -108,7 +103,7 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 					doneCh <- true
 				}
 			}
-		}(localDir, remoteDir)
+		}(localPath, remotePath)
 	}
 
 	if -1 == timeout {
@@ -137,4 +132,22 @@ func (ssh_conf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
 	}
 	defer session.Close()
 	return fn(session)
+}
+
+// SafeScp first copy localPath to remote /tmp path, then move tmp file to remotePath if upload successfully.
+func (ssh_conf *SSHConfig) SafeScp(localPath, remotePath string) error {
+	if IsDir(localPath) {
+		return ssh_conf.SCopyDir(localPath, remotePath, -1, false)
+	}
+
+	remoteTmpName := Sha1(fmt.Sprintf("%s_%d", localPath, time.Now().UnixNano()))
+	destTmpPath := filepath.Join("/tmp", remoteTmpName)
+	err := ssh_conf.SCopyFile(localPath, destTmpPath)
+	defer ssh_conf.Run(fmt.Sprintf("cd /tmp;rm -f %s", remoteTmpName), -1)
+
+	if err != nil {
+		return err
+	}
+	_, _, _, err = ssh_conf.Run(fmt.Sprintf("mv %s %s", destTmpPath, remotePath), -1)
+	return err
 }
