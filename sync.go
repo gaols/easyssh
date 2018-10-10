@@ -143,7 +143,7 @@ func (ssh_conf *SSHConfig) SafeScp(localPath, remotePath string) error {
 	remoteTmpName := Sha1(fmt.Sprintf("%s_%d", localPath, time.Now().UnixNano()))
 	destTmpPath := filepath.Join("/tmp", remoteTmpName)
 	err := ssh_conf.SCopyFile(localPath, destTmpPath)
-	defer ssh_conf.Run(fmt.Sprintf("cd /tmp;rm -f %s", remoteTmpName), -1)
+	defer ssh_conf.Run(fmt.Sprintf("rm -f /tmp/%s", remoteTmpName), -1)
 
 	if err != nil {
 		return err
