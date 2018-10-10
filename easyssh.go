@@ -8,12 +8,15 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
+
+	"net"
 	"os"
 	"os/user"
 	"path/filepath"
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 const (
@@ -69,6 +72,14 @@ func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 		auths = append(auths, ssh.Password(ssh_conf.Password))
 	}
 
+	if pubKey, err := getKeyFile(ssh_conf.Key); err == nil {
+		auths = append(auths, ssh.PublicKeys(pubKey))
+	}
+
+	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+		auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
+		defer sshAgent.Close()
+	}
 	// Default port 22
 	if ssh_conf.Port == "" {
 		ssh_conf.Port = "22"
@@ -77,10 +88,6 @@ func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 	// Default current user
 	if ssh_conf.User == "" {
 		ssh_conf.User = os.Getenv("USER")
-	}
-
-	if pubKey, err := getKeyFile(ssh_conf.Key); err == nil {
-		auths = append(auths, ssh.PublicKeys(pubKey))
 	}
 
 	config := &ssh.ClientConfig{
@@ -177,7 +184,7 @@ func (ssh_conf *SSHConfig) Run(command string, timeout int) (outStr string, errS
 L:
 	for {
 		select {
-		case done:= <-doneChan:
+		case done := <-doneChan:
 			isTimeout = !done
 			break L
 		case outLine := <-stdoutChan:

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/gaols/easyssh"
 	"fmt"
+
+	"github.com/gaols/easyssh"
 )
 
 func main() {
@@ -11,7 +12,7 @@ func main() {
 		User:   "gaols",
 		Server: "192.168.2.155",
 		// Optional key or Password without either we try to contact your agent SOCKET
-		Password: "******",
+		// Password: "******",
 	}
 
 	// Call Run method with command you want to run on remote server.
