@@ -22,6 +22,5 @@ func main() {
 		panic("Can't run remote command: " + err.Error())
 	} else {
 		fmt.Println("success")
-
 	}
 }
