@@ -10,7 +10,7 @@ import (
 	"io"
 )
 
-// SCopy copy localDirPath to the remote dir specified by remoteDirPath,
+// SCopyDir copy localDirPath to the remote dir specified by remoteDirPath,
 // Be aware that localDirPath and remoteDirPath should exists before SCopy.
 // At last, you should know, timeout is not reliable.
 func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout int, verbose bool) error {
@@ -29,7 +29,7 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 
 	_, err := Local("cd %s;tar czf %s %s", localDirParentPath, tgzName, localDirname)
 	if err != nil {
-		return errors.New(fmt.Sprintf("create tgz pack for (%s) error: %s", localDirPath, err.Error()))
+		return fmt.Errorf("create tgz pack for (%s) error: %s", localDirPath, err.Error())
 	}
 
 	copyM := fmt.Sprintf("%s -> %s", localDirPath, remoteDirPath)
@@ -42,7 +42,7 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 	}
 
 	isTimeout, err := ssh_conf.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(line string, lineType int) {
-		if verbose && TYPE_STDERR == lineType {
+		if verbose && TypeStderr == lineType {
 			fmt.Println(line)
 		}
 	}, timeout)
@@ -52,13 +52,13 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 	}
 
 	if isTimeout {
-		return errors.New(fmt.Sprintf("SCopy timeout error: %s", copyM))
+		return fmt.Errorf("SCopy timeout error: %s", copyM)
 	}
 
 	return nil
 }
 
-// CopyFile uploads srcFilePath to remote machine like native scp console app.
+// SCopyFile uploads srcFilePath to remote machine like native scp console app.
 // destFilePath should be an absolute file path including filename and cannot be a dir.
 func (ssh_conf *SSHConfig) SCopyFile(srcFilePath, destFilePath string) error {
 	return ssh_conf.Work(func(session *ssh.Session) error {
@@ -125,6 +125,7 @@ L:
 	return err
 }
 
+// Work a helper method to build a ssh connection.
 func (ssh_conf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
 	session, err := ssh_conf.connect()
 	if err != nil {
