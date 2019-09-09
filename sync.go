@@ -24,8 +24,8 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 	localDirParentPath := filepath.Dir(localDirPath)
 	localDirname := filepath.Base(localDirPath)
 	tgzName := fmt.Sprintf("%s_%s.tar.gz", Sha1(fmt.Sprintf("%s_%d", localDirPath, time.Now().UnixNano())), localDirname)
-	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName)
-	defer ssh_conf.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), timeout)
+	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName) // safe
+	defer ssh_conf.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), timeout) // safe
 
 	_, err := Local("cd %s;tar czf %s %s", localDirParentPath, tgzName, localDirname)
 	if err != nil {
@@ -143,11 +143,11 @@ func (ssh_conf *SSHConfig) SafeScp(localPath, remotePath string) error {
 	remoteTmpName := Sha1(fmt.Sprintf("%s_%d", localPath, time.Now().UnixNano()))
 	destTmpPath := filepath.Join("/tmp", remoteTmpName)
 	err := ssh_conf.SCopyFile(localPath, destTmpPath)
-	defer ssh_conf.Run(fmt.Sprintf("rm -f /tmp/%s", remoteTmpName), -1)
+	defer ssh_conf.Run(fmt.Sprintf("rm -f /tmp/%s", remoteTmpName), -1) // safe
 
 	if err != nil {
 		return err
 	}
-	_, _, _, err = ssh_conf.Run(fmt.Sprintf("mv %s %s", destTmpPath, remotePath), -1)
+	_, _, _, err = ssh_conf.Run(fmt.Sprintf("mv %s %s", destTmpPath, remotePath), -1) // safe
 	return err
 }
