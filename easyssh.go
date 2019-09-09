@@ -20,11 +20,13 @@ import (
 )
 
 const (
-	TYPE_STDOUT = 0
-	TYPE_STDERR = 1
+	// TypeStdout is type of stdout
+	TypeStdout = 0
+	// TypeStderr is type of stderr
+	TypeStderr = 1
 )
 
-// Contains main authority information.
+// SSHConfig contains main authority information.
 // User field should be a name of user on remote server (ex. john in ssh john@example.com).
 // Server field should be a remote machine address (ex. example.com in ssh john@example.com)
 // Key is a path to private key on your local machine.
@@ -174,7 +176,7 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan stri
 	return stdoutChan, stderrChan, done, err
 }
 
-// Runs command on remote machine and returns its stdout as a string
+// Run command on remote machine and returns its stdout as a string
 func (ssh_conf *SSHConfig) Run(command string, timeout int) (outStr string, errStr string, isTimeout bool, err error) {
 	stdoutChan, stderrChan, doneChan, err := ssh_conf.Stream(command, timeout)
 	if err != nil {
@@ -197,6 +199,7 @@ L:
 	return outStr, errStr, isTimeout, err
 }
 
+// RtRun run command on remote machine and get command output as soon as possible.
 func (ssh_conf *SSHConfig) RtRun(command string, lineHandler func(string string, lineType int), timeout int) (isTimeout bool, err error) {
 	stdoutChan, stderrChan, doneChan, err := ssh_conf.Stream(command, timeout)
 	if err != nil {
@@ -210,9 +213,9 @@ L:
 			isTimeout = !done
 			break L
 		case outLine := <-stdoutChan:
-			lineHandler(outLine, TYPE_STDOUT)
+			lineHandler(outLine, TypeStdout)
 		case errLine := <-stderrChan:
-			lineHandler(errLine, TYPE_STDERR)
+			lineHandler(errLine, TypeStderr)
 		}
 	}
 	// return the concatenation of all signals from the output channel
@@ -234,7 +237,7 @@ func (ssh_conf *SSHConfig) Scp(localPath, remotePath string) error {
 	panic("invalid local path: " + localPath)
 }
 
-// SCopyM copy multiple local file or dir to their corresponding remote path specified by para pathMappings.
+// ScpM copy multiple local file or dir to their corresponding remote path specified by para pathMappings.
 func (ssh_conf *SSHConfig) ScpM(dirPathMappings map[string]string) error {
 	return ssh_conf.SCopyM(dirPathMappings, -1, true)
 }

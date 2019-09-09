@@ -8,6 +8,7 @@ import (
 	"bufio"
 )
 
+// Local run a cmd on local pc.
 // https://studygolang.com/articles/4004   <- run shell command and read output line by line
 // https://studygolang.com/articles/7767   <- run command without known args
 func Local(localCmd string, paras ...interface{}) (out string, err error) {
@@ -18,6 +19,7 @@ func Local(localCmd string, paras ...interface{}) (out string, err error) {
 	return
 }
 
+// RtLocal run a cmd on local machine and show command output in real time.
 func RtLocal(localCmd string, lineHandler func(line string, lineType int8), paras ...interface{}) error {
 	localCmd = fmt.Sprintf(localCmd, paras...)
 	cmd := exec.Command("/bin/bash", "-c", localCmd)
@@ -41,10 +43,10 @@ func RtLocal(localCmd string, lineHandler func(line string, lineType int8), para
 		stdoutScanner := bufio.NewScanner(stdout)
 		stderrScanner := bufio.NewScanner(stderr)
 		for stdoutScanner.Scan() {
-			lineHandler(stdoutScanner.Text(), TYPE_STDOUT)
+			lineHandler(stdoutScanner.Text(), TypeStdout)
 		}
 		for stderrScanner.Scan() {
-			lineHandler(stderrScanner.Text(), TYPE_STDERR)
+			lineHandler(stderrScanner.Text(), TypeStderr)
 		}
 		ch <- 1
 	}()
