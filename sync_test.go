@@ -8,18 +8,22 @@ import (
 func TestSSHConfig_SCopy(t *testing.T) {
 	config := &SSHConfig{
 		User:     "gaols",
-		Server:   "192.168.2.155",
+		Server:   "192.168.2.100",
 		Port:     "22",
 		Password: "******",
 	}
 
-	config.Scp("/home/gaols/Codes/go/src/github.com/gaols/easyssh/", "/tmp")
+	err := config.Scp("/home/gaols/Codes/go/src/github.com/gaols/easyssh/", "/tmp")
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 }
 
 func TestSSHConfig_SCopyM(t *testing.T) {
 	config := &SSHConfig{
 		User:     "gaols",
-		Server:   "192.168.2.155",
+		Server:   "192.168.2.100",
 		Port:     "22",
 		Password: "******",
 	}
@@ -31,16 +35,36 @@ func TestSSHConfig_SCopyM(t *testing.T) {
 	err := config.ScpM(pathMappings)
 	if err != nil {
 		fmt.Println(err.Error())
+		t.FailNow()
 	}
 }
 
 func TestSSHConfig_SafeScp(t *testing.T) {
 	config := &SSHConfig{
 		User:     "gaols",
-		Server:   "192.168.2.155",
+		Server:   "192.168.2.100",
 		Port:     "22",
 		Password: "******",
 	}
 
-	config.Scp("/home/gaols/Codes/go/src/github.com/gaols/easyssh/easyssh.go", "/home/gaols/Downloads/easyssh.go")
+	err := config.Scp("/home/gaols/Codes/go/src/github.com/gaols/easyssh/easyssh.go", "/home/gaols/Downloads/easyssh.go")
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
+}
+
+func TestSSHConfig_DownloadF(t *testing.T) {
+	config := &SSHConfig{
+		User:     "gaols",
+		Server:   "192.168.2.100",
+		Port:     "22",
+		Password: "******",
+	}
+
+	err := config.DownloadF("/home/gaols/Codes/go/src/github.com/gaols/easyssh/sync_test.go", "/tmp/sync_test.go")
+	if err != nil {
+		t.Log(err)
+		t.FailNow()
+	}
 }

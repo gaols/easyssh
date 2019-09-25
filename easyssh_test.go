@@ -39,7 +39,7 @@ func TestStream(t *testing.T) {
 			}
 		}
 		if stdout != testCase[1] {
-			t.Error("Output didn't match expected: %s,%s", stdout, stderr)
+			t.Errorf("Output didn't match expected: %s,%s", stdout, stderr)
 		}
 	}
 }
@@ -50,12 +50,12 @@ func TestRun(t *testing.T) {
 		"echo test", `for i in $(ls); do echo "$i"; done`, "ls",
 	}
 	for _, cmd := range commands {
-		stdout, stderr, istimeout, err := sshConfig.Run(cmd, 10)
+		stdout, stderr, _, err := sshConfig.Run(cmd, 10)
 		if err != nil {
 			t.Errorf("Run failed: %s", err)
 		}
 		if stdout == "" {
-			t.Errorf("Output was empty for command: %s,%s,%s", cmd, stdout, stderr, istimeout)
+			t.Errorf("Output was empty for command: %s,%s,%s", cmd, stdout, stderr)
 		}
 	}
 }

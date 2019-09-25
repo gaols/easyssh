@@ -66,6 +66,20 @@ func getKeyFile(keypath string) (ssh.Signer, error) {
 
 // connects to remote server using SSHConfig struct and returns *ssh.Session
 func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
+	client, err := ssh_conf.Cli()
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	return session, nil
+}
+
+// Cli create ssh client
+func (ssh_conf *SSHConfig) Cli() (*ssh.Client, error) {
 	// auths holds the detected ssh auth methods
 	auths := []ssh.AuthMethod{}
 
@@ -95,6 +109,7 @@ func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 	config := &ssh.ClientConfig{
 		User: ssh_conf.User,
 		Auth: auths,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	// default maximum amount of time for the TCP connection to establish is 10s
@@ -109,12 +124,7 @@ func (ssh_conf *SSHConfig) connect() (*ssh.Session, error) {
 		return nil, err
 	}
 
-	session, err := client.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
+	return client, nil
 }
 
 // Stream returns one channel that combines the stdout and stderr of the command

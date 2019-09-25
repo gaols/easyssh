@@ -2,4 +2,8 @@ module github.com/gaols/easyssh
 
 go 1.12
 
-require golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
+require (
+	github.com/gaols/goutils v1.2.1
+	github.com/pkg/sftp v1.10.1
+	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392
+)

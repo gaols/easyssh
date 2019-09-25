@@ -8,6 +8,8 @@ import (
 	"golang.org/x/crypto/ssh"
 	"os"
 	"io"
+	"github.com/gaols/goutils"
+	"github.com/pkg/sftp"
 )
 
 // SCopyDir copy localDirPath to the remote dir specified by remoteDirPath,
@@ -111,7 +113,7 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 		timeout = 24 * 3600
 	}
 	timeoutChan := time.After(time.Duration(timeout) * time.Second)
-L:
+	L:
 	for i := 0; i < len(pathMappings); i++ {
 		select {
 		case <-doneCh:
@@ -151,4 +153,61 @@ func (ssh_conf *SSHConfig) SafeScp(localPath, remotePath string) error {
 	}
 	_, _, _, err = ssh_conf.Run(fmt.Sprintf("mv %s %s", destTmpPath, remotePath), -1) // safe
 	return err
+}
+
+
+// DownloadF is short for download file, both the remote path and local path should be the absolute path.
+func (ssh_conf *SSHConfig) DownloadF(remotePath, localPath string) error {
+	cli, err := ssh_conf.Cli()
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	client, err := sftp.NewClient(cli)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if goutils.IsDir(localPath) {
+		return fmt.Errorf("%s is a dir", localPath)
+	}
+
+	if goutils.IsRegular(localPath) {
+		goutils.Confirm(fmt.Sprintf("%s is already exists, do you want to override it(yY/nN)", localPath), []string{"y", "Y"}, []string{"n", "N"}, func() {
+			os.Exit(1)
+		})
+	}
+
+	localDir := filepath.Dir(localPath)
+	if err := os.MkdirAll(localDir, 0666); err != nil {
+		return fmt.Errorf("mkdir for localpath: %s failed", localPath)
+	}
+
+	// create destination file
+	dstFile, err := os.Create(localPath)
+	if err != nil {
+		return fmt.Errorf("create local file error: %s, localPath: %s", err.Error(), localPath)
+	}
+	defer dstFile.Close()
+
+	// open source file
+	srcFile, err := client.Open(remotePath)
+	if err != nil {
+		return err
+	}
+
+	// copy source file to destination file
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	// flush in-memory copy
+	err = dstFile.Sync()
+	if err != nil {
+		return err
+	}
+	return nil
 }
