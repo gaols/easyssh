@@ -22,6 +22,26 @@ sshconfig := &easyssh.SSHConfig{...}
 sshconfig.ScpM(pathmapping)
 ```
 
+## Download
+
+```go
+// download a file
+config := &SSHConfig{
+  User:     "gaols",
+  Server:   "192.168.2.100",
+  Port:     "22",
+  Password: "******",
+}
+
+// /home/gaols/Codes/go/src/github.com/gaols/easyssh/sync_test.go is remote file to download
+// /tmp/sync_test.go is the destination where remote file will be saved
+err := config.DownloadF("/home/gaols/Codes/go/src/github.com/gaols/easyssh/sync_test.go", "/tmp/sync_test.go")
+if err != nil {
+  t.Log(err)
+  t.FailNow()
+}
+```
+
 ## Install
 
 ```
