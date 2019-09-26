@@ -132,14 +132,11 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout, stderr c
 		return stdout, stderr, done, err
 	}
 	err = session.Start(command)
-	stdoutScanner := bufio.NewScanner(stdOutReader)
-	stderrScanner := bufio.NewScanner(stderrReader)
+
 	// continuously send the command's output over the channel
 	stdoutChan := make(chan string)
 	stderrChan := make(chan string)
 	done = make(chan bool)
-	stdoutDone := make(chan byte)
-	stderrDone := make(chan byte)
 
 	go func() {
 		defer close(stdoutChan)
@@ -147,8 +144,12 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout, stderr c
 		defer close(done)
 
 		go func() {
+			stdoutDone := make(chan byte)
+			stderrDone := make(chan byte)
+
 			// loop stdout
 			go func() {
+				stdoutScanner := bufio.NewScanner(stdOutReader)
 				for stdoutScanner.Scan() {
 					stdoutChan <- stdoutScanner.Text()
 				}
@@ -157,6 +158,7 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout, stderr c
 
 			// loop stderr
 			go func() {
+				stderrScanner := bufio.NewScanner(stderrReader)
 				for stderrScanner.Scan() {
 					stderrChan <- stderrScanner.Text()
 				}
@@ -217,7 +219,7 @@ func (ssh_conf *SSHConfig) RtRun(command string, lineHandler func(string string,
 		return isTimeout, err
 	}
 	// read from the output channel until the done signal is passed
-	OuterL:
+OuterL:
 	for {
 		select {
 		case done := <-doneChan:
