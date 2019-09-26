@@ -11,9 +11,9 @@ import (
 
 	"net"
 	"os"
-	"os/user"
-	"path/filepath"
 	"time"
+
+	"github.com/gaols/goutils"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -31,8 +31,6 @@ const (
 // Server field should be a remote machine address (ex. example.com in ssh john@example.com)
 // Key is a path to private key on your local machine.
 // Port is SSH server port on remote machine.
-// Note: easyssh looking for private key in user's home directory (ex. /home/john + Key).
-// Then ensure your Key begins from '/' (ex. /.ssh/id_rsa)
 type SSHConfig struct {
 	User     string
 	Server   string
@@ -45,13 +43,7 @@ type SSHConfig struct {
 // returns ssh.Signer from user you running app home path + cutted key path.
 // (ex. pubkey,err := getKeyFile("/.ssh/id_rsa") )
 func getKeyFile(keypath string) (ssh.Signer, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-
-	file := filepath.Join(usr.HomeDir, keypath)
-	buf, err := ioutil.ReadFile(file)
+	buf, err := ioutil.ReadFile(keypath)
 	if err != nil {
 		return nil, err
 	}
@@ -97,18 +89,14 @@ func (ssh_conf *SSHConfig) Cli() (*ssh.Client, error) {
 		defer sshAgent.Close()
 	}
 	// Default port 22
-	if ssh_conf.Port == "" {
-		ssh_conf.Port = "22"
-	}
+	ssh_conf.Port = goutils.DefaultIfBlank(ssh_conf.Port, "22")
 
 	// Default current user
-	if ssh_conf.User == "" {
-		ssh_conf.User = os.Getenv("USER")
-	}
+	ssh_conf.User = goutils.DefaultIfBlank(ssh_conf.User, os.Getenv("USER"))
 
 	config := &ssh.ClientConfig{
-		User: ssh_conf.User,
-		Auth: auths,
+		User:            ssh_conf.User,
+		Auth:            auths,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
@@ -119,12 +107,7 @@ func (ssh_conf *SSHConfig) Cli() (*ssh.Client, error) {
 		config.Timeout = time.Duration(10) * time.Second
 	}
 
-	client, err := ssh.Dial("tcp", ssh_conf.Server+":"+ssh_conf.Port, config)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
+	return ssh.Dial("tcp", ssh_conf.Server+":"+ssh_conf.Port, config)
 }
 
 // Stream returns one channel that combines the stdout and stderr of the command
@@ -216,12 +199,12 @@ func (ssh_conf *SSHConfig) RtRun(command string, lineHandler func(string string,
 		return isTimeout, err
 	}
 	// read from the output channel until the done signal is passed
-L:
+Outer:
 	for {
 		select {
 		case done := <-doneChan:
 			isTimeout = !done
-			break L
+			break Outer
 		case outLine := <-stdoutChan:
 			lineHandler(outLine, TypeStdout)
 		case errLine := <-stderrChan:
