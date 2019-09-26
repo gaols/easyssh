@@ -6,6 +6,7 @@ package easyssh
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io/ioutil"
 
@@ -80,8 +81,10 @@ func (ssh_conf *SSHConfig) Cli() (*ssh.Client, error) {
 		auths = append(auths, ssh.Password(ssh_conf.Password))
 	}
 
-	if pubKey, err := getKeyFile(ssh_conf.Key); err == nil {
-		auths = append(auths, ssh.PublicKeys(pubKey))
+	if goutils.IsNotBlank(ssh_conf.Key) {
+		if pubKey, err := getKeyFile(ssh_conf.Key); err == nil {
+			auths = append(auths, ssh.PublicKeys(pubKey))
+		}
 	}
 
 	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
@@ -101,10 +104,9 @@ func (ssh_conf *SSHConfig) Cli() (*ssh.Client, error) {
 	}
 
 	// default maximum amount of time for the TCP connection to establish is 10s
+	config.Timeout = time.Duration(time.Second * 10)
 	if ssh_conf.Timeout > 0 {
 		config.Timeout = time.Duration(ssh_conf.Timeout) * time.Second
-	} else {
-		config.Timeout = time.Duration(10) * time.Second
 	}
 
 	return ssh.Dial("tcp", ssh_conf.Server+":"+ssh_conf.Port, config)
@@ -113,7 +115,7 @@ func (ssh_conf *SSHConfig) Cli() (*ssh.Client, error) {
 // Stream returns one channel that combines the stdout and stderr of the command
 // as it is run on the remote machine, and another that sends true when the
 // command is done. The sessions and channels will then be closed.
-func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan string, stderr chan string, done chan bool, err error) {
+func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout, stderr chan string, done chan bool, err error) {
 	// connect to remote host
 	session, err := ssh_conf.connect()
 	if err != nil {
@@ -136,6 +138,8 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan stri
 	stdoutChan := make(chan string)
 	stderrChan := make(chan string)
 	done = make(chan bool)
+	stdoutDone := make(chan byte)
+	stderrDone := make(chan byte)
 
 	go func() {
 		defer close(stdoutChan)
@@ -143,16 +147,28 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan stri
 		defer close(done)
 
 		go func() {
-			for stdoutScanner.Scan() {
-				stdoutChan <- stdoutScanner.Text()
-			}
-			for stderrScanner.Scan() {
-				stderrChan <- stderrScanner.Text()
-			}
+			// loop stdout
+			go func() {
+				for stdoutScanner.Scan() {
+					stdoutChan <- stdoutScanner.Text()
+				}
+				stdoutDone <- 1
+			}()
+
+			// loop stderr
+			go func() {
+				for stderrScanner.Scan() {
+					stderrChan <- stderrScanner.Text()
+				}
+				stderrDone <- 1
+			}()
+
+			<-stdoutDone
+			<-stderrDone
 			done <- true
 		}()
 
-		if -1 == timeout {
+		if timeout <= 0 {
 			// a long timeout simulate wait forever
 			timeout = 24 * 3600
 		}
@@ -170,26 +186,28 @@ func (ssh_conf *SSHConfig) Stream(command string, timeout int) (stdout chan stri
 }
 
 // Run command on remote machine and returns its stdout as a string
-func (ssh_conf *SSHConfig) Run(command string, timeout int) (outStr string, errStr string, isTimeout bool, err error) {
+func (ssh_conf *SSHConfig) Run(command string, timeout int) (outStr, errStr string, isTimeout bool, err error) {
 	stdoutChan, stderrChan, doneChan, err := ssh_conf.Stream(command, timeout)
 	if err != nil {
 		return outStr, errStr, isTimeout, err
 	}
 	// read from the output channel until the done signal is passed
-L:
+	var stdoutBuf, stderrBuf bytes.Buffer
+
+OuterL:
 	for {
 		select {
 		case done := <-doneChan:
 			isTimeout = !done
-			break L
+			break OuterL
 		case outLine := <-stdoutChan:
-			outStr += outLine + "\n"
+			stdoutBuf.WriteString(outLine + "\n")
 		case errLine := <-stderrChan:
-			errStr += errLine + "\n"
+			stderrBuf.WriteString(errLine + "\n")
 		}
 	}
 	// return the concatenation of all signals from the output channel
-	return outStr, errStr, isTimeout, err
+	return stdoutBuf.String(), stderrBuf.String(), isTimeout, err
 }
 
 // RtRun run command on remote machine and get command output as soon as possible.
@@ -199,12 +217,12 @@ func (ssh_conf *SSHConfig) RtRun(command string, lineHandler func(string string,
 		return isTimeout, err
 	}
 	// read from the output channel until the done signal is passed
-Outer:
+	OuterL:
 	for {
 		select {
 		case done := <-doneChan:
 			isTimeout = !done
-			break Outer
+			break OuterL
 		case outLine := <-stdoutChan:
 			lineHandler(outLine, TypeStdout)
 		case errLine := <-stderrChan:
