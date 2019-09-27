@@ -8,7 +8,7 @@ import (
 var sshConfig = &SSHConfig{
 	User:     "root",
 	Server:   "192.168.2.23",
-	Password: "glszhl0817",
+	Password: "******",
 	Key:      "/home/gaols/.ssh/id_rsa",
 	Port:     "22",
 }
