@@ -1,16 +1,16 @@
 package easyssh
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 var sshConfig = &SSHConfig{
-	User:     "gaols",
-	Server:   "192.168.2.155",
-	Password: "******",
-	//Key:  "/.ssh/id_rsa",
-	Port: "22",
+	User:     "root",
+	Server:   "192.168.2.23",
+	Password: "glszhl0817",
+	Key:      "/home/gaols/.ssh/id_rsa",
+	Port:     "22",
 }
 
 func TestStream(t *testing.T) {
@@ -70,5 +70,17 @@ func TestSSHConfig_Scp(t *testing.T) {
 	} else {
 		fmt.Println("success")
 
+	}
+}
+
+func TestSSHConfig_RunScript(t *testing.T) {
+	script := `
+	ls -l /tmp
+	echo list tmp done
+	`
+
+	err := sshConfig.RunScript(script)
+	if err != nil {
+		t.Error(err)
 	}
 }

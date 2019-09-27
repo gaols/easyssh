@@ -8,7 +8,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"strings"
 
 	"net"
 	"os"
@@ -253,4 +255,38 @@ func (ssh_conf *SSHConfig) Scp(localPath, remotePath string) error {
 // ScpM copy multiple local file or dir to their corresponding remote path specified by para pathMappings.
 func (ssh_conf *SSHConfig) ScpM(dirPathMappings map[string]string) error {
 	return ssh_conf.SCopyM(dirPathMappings, -1, true)
+}
+
+// RunScript run a serial of commands on remote
+func (ssh_conf *SSHConfig) RunScript(script string) error {
+	return ssh_conf.Work(func(s *ssh.Session) error {
+		s.Stdin = bufio.NewReader(strings.NewReader(script))
+		stdout, err := s.StdoutPipe()
+		if err != nil {
+			return err
+		}
+		stderr, err := s.StderrPipe()
+		if err != nil {
+			return err
+		}
+
+		go io.Copy(os.Stdout, stdout)
+		go io.Copy(os.Stderr, stderr)
+
+		err = s.Shell()
+		if err != nil {
+			return err
+		}
+		return s.Wait()
+	})
+}
+
+// RunScriptFile run a script file on remote
+func (ssh_conf *SSHConfig) RunScriptFile(script string) error {
+	bytes, err := ioutil.ReadFile(script)
+	if err != nil {
+		return err
+	}
+
+	return ssh_conf.RunScript(string(bytes))
 }
