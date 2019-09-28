@@ -1,15 +1,16 @@
 package easyssh
 
 import (
+	"fmt"
 	"testing"
 )
 
-var sshConfig = &MakeConfig{
+var sshConfig = &SSHConfig{
 	User:     "root",
-	Server:   "172.30.19.2",
-	Password: "password",
-	//Key:  "/.ssh/id_rsa",
-	Port: "22",
+	Server:   "192.168.2.23",
+	Password: "******",
+	Key:      "/home/gaols/.ssh/id_rsa",
+	Port:     "22",
 }
 
 func TestStream(t *testing.T) {
@@ -38,7 +39,7 @@ func TestStream(t *testing.T) {
 			}
 		}
 		if stdout != testCase[1] {
-			t.Error("Output didn't match expected: %s,%s", stdout, stderr)
+			t.Errorf("Output didn't match expected: %s,%s", stdout, stderr)
 		}
 	}
 }
@@ -49,12 +50,37 @@ func TestRun(t *testing.T) {
 		"echo test", `for i in $(ls); do echo "$i"; done`, "ls",
 	}
 	for _, cmd := range commands {
-		stdout, stderr, istimeout, err := sshConfig.Run(cmd, 10)
+		stdout, stderr, _, err := sshConfig.Run(cmd, 10)
 		if err != nil {
 			t.Errorf("Run failed: %s", err)
 		}
 		if stdout == "" {
-			t.Errorf("Output was empty for command: %s,%s,%s", cmd, stdout, stderr, istimeout)
+			t.Errorf("Output was empty for command: %s,%s,%s", cmd, stdout, stderr)
 		}
+	}
+}
+
+func TestSSHConfig_Scp(t *testing.T) {
+	// Call Scp method with file you want to upload to remote server.
+	err := sshConfig.Scp("/home/gaols/untitled1.html", "/tmp/target.html")
+
+	// Handle errors
+	if err != nil {
+		panic("Can't run remote command: " + err.Error())
+	} else {
+		fmt.Println("success")
+
+	}
+}
+
+func TestSSHConfig_RunScript(t *testing.T) {
+	script := `
+	ls -l /tmp
+	echo list tmp done
+	`
+
+	err := sshConfig.RunScript(script)
+	if err != nil {
+		t.Error(err)
 	}
 }
