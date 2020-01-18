@@ -139,7 +139,7 @@ func (sshConf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
 
 // SafeScp first copy localPath to remote /tmp path, then move tmp file to remotePath if upload successfully.
 func (sshConf *SSHConfig) SafeScp(localPath, remotePath string) error {
-	if IsDir(localPath) {
+	if goutils.IsDir(localPath) {
 		return sshConf.SCopyDir(localPath, remotePath, -1, false)
 	}
 
@@ -167,7 +167,7 @@ func (sshConf *SSHConfig) DownloadF(remotePath, localPath string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer Close(client)
 
 	if goutils.IsDir(localPath) {
 		return fmt.Errorf("%s is a dir", localPath)
@@ -189,7 +189,7 @@ func (sshConf *SSHConfig) DownloadF(remotePath, localPath string) error {
 	if err != nil {
 		return fmt.Errorf("create local file error: %s, localPath: %s", err.Error(), localPath)
 	}
-	defer dstFile.Close()
+	defer Close(dstFile)
 
 	// open source file
 	srcFile, err := client.Open(remotePath)

@@ -238,11 +238,11 @@ OuterL:
 // Warning: remotePath should contain the file name if the localPath is a regular file,
 // however, if the localPath to copy is dir, the remotePath must be the dir into which the localPath will be copied.
 func (sshConf *SSHConfig) Scp(localPath, remotePath string) error {
-	if IsDir(localPath) {
+	if goutils.IsDir(localPath) {
 		return sshConf.SCopyDir(localPath, remotePath, -1, true)
 	}
 
-	if IsRegular(localPath) {
+	if goutils.IsRegular(localPath) {
 		return sshConf.SCopyFile(localPath, remotePath)
 	}
 

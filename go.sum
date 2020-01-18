@@ -2,8 +2,8 @@ github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
-github.com/gaols/goutils v1.2.1 h1:YPwTD5PCKXa0aztmTHUEA2ywdS3KUWNscaB+zJRkcYE=
-github.com/gaols/goutils v1.2.1/go.mod h1:jD4+DRYCBOVtG8mT28fVqnUWG+OrscTB6zHHj5UT6hE=
+github.com/gaols/goutils v1.2.3 h1:86gZvx/xcrp3p70OO7LzYNSizx0+FQkXR4pwC8kj8N8=
+github.com/gaols/goutils v1.2.3/go.mod h1:jD4+DRYCBOVtG8mT28fVqnUWG+OrscTB6zHHj5UT6hE=
 github.com/kr/fs v0.1.0 h1:Jskdu9ieNAYnjxsi0LbQp1ulIKZV1LAFgK1tWhpZgl8=
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/mattn/go-colorable v0.1.2 h1:/bC9yWikZXAL9uJdulbSfyVNIR3n3trXl+v8+1sx8mU=

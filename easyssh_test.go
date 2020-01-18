@@ -7,8 +7,7 @@ import (
 
 var sshConfig = &SSHConfig{
 	User:     "root",
-	Server:   "192.168.2.23",
-	Password: "******",
+	Server:   "192.168.2.24",
 	Key:      "/home/gaols/.ssh/id_rsa",
 	Port:     "22",
 }
@@ -62,14 +61,13 @@ func TestRun(t *testing.T) {
 
 func TestSSHConfig_Scp(t *testing.T) {
 	// Call Scp method with file you want to upload to remote server.
-	err := sshConfig.Scp("/home/gaols/untitled1.html", "/tmp/target.html")
+	err := sshConfig.Scp("/tmp/hello", "/tmp/target.html")
 
 	// Handle errors
 	if err != nil {
 		panic("Can't run remote command: " + err.Error())
 	} else {
 		fmt.Println("success")
-
 	}
 }
 

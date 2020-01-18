@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/gaols/goutils"
 	"os/exec"
 	"path/filepath"
 )
@@ -58,7 +59,7 @@ func RtLocal(localCmd string, lineHandler func(line string, lineType int8), para
 
 // Tar pack the targetPath and put tarball to tgzPath, targetPath and tgzPath should both the absolute path.
 func Tar(tgzPath, targetPath string) error {
-	if !IsDir(targetPath) && !IsRegular(targetPath) {
+	if !goutils.IsDir(targetPath) && !goutils.IsRegular(targetPath) {
 		return errors.New("invalid pack path: " + targetPath)
 	}
 
@@ -70,11 +71,11 @@ func Tar(tgzPath, targetPath string) error {
 
 // UnTar unpack the tarball specified by tgzPath and extract it to the path specified by targetPath
 func UnTar(tgzPath, targetPath string) error {
-	if !IsDir(targetPath) {
+	if !goutils.IsDir(targetPath) {
 		return errors.New("tar extract path invalid: " + targetPath)
 	}
 
-	if !IsRegular(tgzPath) {
+	if !goutils.IsRegular(tgzPath) {
 		return errors.New("tar path invalid: " + tgzPath)
 	}
 

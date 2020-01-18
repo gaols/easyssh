@@ -34,28 +34,6 @@ func RemoveTrailingSlash(path string) string {
 	return path
 }
 
-// IsDir tests whether a path is a directory.
-func IsDir(path string) bool {
-	stat, err := os.Stat(path)
-	if err != nil {
-		panic("error: " + err.Error())
-	}
-
-	mode := stat.Mode()
-	return mode.IsDir()
-}
-
-// IsRegular is a helper method to test whether a path is a regular file.
-func IsRegular(path string) bool {
-	stat, err := os.Stat(path)
-	if err != nil {
-		panic("error: " + err.Error())
-	}
-
-	mode := stat.Mode()
-	return mode.IsRegular()
-}
-
 func Close(c io.Closer) {
 	err := c.Close()
 	if err != nil {
