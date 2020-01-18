@@ -1,21 +1,21 @@
 package easyssh
 
 import (
-	"path/filepath"
-	"fmt"
-	"time"
 	"errors"
-	"golang.org/x/crypto/ssh"
-	"os"
-	"io"
+	"fmt"
 	"github.com/gaols/goutils"
 	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
+	"io"
+	"os"
+	"path/filepath"
+	"time"
 )
 
 // SCopyDir copy localDirPath to the remote dir specified by remoteDirPath,
 // Be aware that localDirPath and remoteDirPath should exists before SCopy.
 // At last, you should know, timeout is not reliable.
-func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout int, verbose bool) error {
+func (sshConf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout int, verbose bool) error {
 	localDirPath = RemoveTrailingSlash(localDirPath)
 	remoteDirPath = RemoveTrailingSlash(remoteDirPath)
 
@@ -26,8 +26,8 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 	localDirParentPath := filepath.Dir(localDirPath)
 	localDirname := filepath.Base(localDirPath)
 	tgzName := fmt.Sprintf("%s_%s.tar.gz", Sha1(fmt.Sprintf("%s_%d", localDirPath, time.Now().UnixNano())), localDirname)
-	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName) // safe
-	defer ssh_conf.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), timeout) // safe
+	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName)                        // safe
+	defer sshConf.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), timeout) // safe
 
 	_, err := Local("cd %s;tar czf %s %s", localDirParentPath, tgzName, localDirname)
 	if err != nil {
@@ -36,14 +36,14 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 
 	copyM := fmt.Sprintf("%s -> %s", localDirPath, remoteDirPath)
 	tgzPath := filepath.Join(localDirParentPath, tgzName)
-	if err = ssh_conf.SCopyFile(tgzPath, filepath.Join(remoteDirPath, tgzName)); err != nil {
+	if err = sshConf.SCopyFile(tgzPath, filepath.Join(remoteDirPath, tgzName)); err != nil {
 		if verbose {
 			fmt.Printf("upload %s error\n", copyM)
 		}
 		return err
 	}
 
-	isTimeout, err := ssh_conf.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(line string, lineType int) {
+	isTimeout, err := sshConf.RtRun(fmt.Sprintf("cd %s;tar xf %s", remoteDirPath, tgzName), func(line string, lineType int) {
 		if verbose && TypeStderr == lineType {
 			fmt.Println(line)
 		}
@@ -62,8 +62,8 @@ func (ssh_conf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout 
 
 // SCopyFile uploads srcFilePath to remote machine like native scp console app.
 // destFilePath should be an absolute file path including filename and cannot be a dir.
-func (ssh_conf *SSHConfig) SCopyFile(srcFilePath, destFilePath string) error {
-	return ssh_conf.Work(func(session *ssh.Session) error {
+func (sshConf *SSHConfig) SCopyFile(srcFilePath, destFilePath string) error {
+	return sshConf.Work(func(session *ssh.Session) error {
 		src, err := os.Open(srcFilePath)
 		if err != nil {
 			return err
@@ -92,14 +92,14 @@ func (ssh_conf *SSHConfig) SCopyFile(srcFilePath, destFilePath string) error {
 // SCopyM copy multiple local path to their corresponding remote path specified by para pathMappings.
 // Warning: to copy a local file, the remote path should contains the filename, however, to copy
 // a local dir, the remote path must be a dir into which the local path will be copied.
-func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, verbose bool) error {
+func (sshConf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, verbose bool) error {
 	errCh := make(chan error, len(pathMappings))
 	doneCh := make(chan bool, len(pathMappings))
 	var err error
 	for localPath, remotePath := range pathMappings {
 		go func(local, remote string) {
 			if err == nil {
-				if err = ssh_conf.Scp(local, remote); err != nil {
+				if err = sshConf.Scp(local, remote); err != nil {
 					errCh <- err
 				} else {
 					doneCh <- true
@@ -113,7 +113,7 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 		timeout = 24 * 3600
 	}
 	timeoutChan := time.After(time.Duration(timeout) * time.Second)
-	L:
+L:
 	for i := 0; i < len(pathMappings); i++ {
 		select {
 		case <-doneCh:
@@ -128,8 +128,8 @@ func (ssh_conf *SSHConfig) SCopyM(pathMappings map[string]string, timeout int, v
 }
 
 // Work a helper method to build a ssh connection.
-func (ssh_conf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
-	session, err := ssh_conf.connect()
+func (sshConf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
+	session, err := sshConf.connect()
 	if err != nil {
 		return err
 	}
@@ -138,27 +138,26 @@ func (ssh_conf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
 }
 
 // SafeScp first copy localPath to remote /tmp path, then move tmp file to remotePath if upload successfully.
-func (ssh_conf *SSHConfig) SafeScp(localPath, remotePath string) error {
+func (sshConf *SSHConfig) SafeScp(localPath, remotePath string) error {
 	if IsDir(localPath) {
-		return ssh_conf.SCopyDir(localPath, remotePath, -1, false)
+		return sshConf.SCopyDir(localPath, remotePath, -1, false)
 	}
 
 	remoteTmpName := Sha1(fmt.Sprintf("%s_%d", localPath, time.Now().UnixNano()))
 	destTmpPath := filepath.Join("/tmp", remoteTmpName)
-	err := ssh_conf.SCopyFile(localPath, destTmpPath)
-	defer ssh_conf.Run(fmt.Sprintf("rm -f /tmp/%s", remoteTmpName), -1) // safe
+	err := sshConf.SCopyFile(localPath, destTmpPath)
+	defer sshConf.Run(fmt.Sprintf("rm -f /tmp/%s", remoteTmpName), -1) // safe
 
 	if err != nil {
 		return err
 	}
-	_, _, _, err = ssh_conf.Run(fmt.Sprintf("mv %s %s", destTmpPath, remotePath), -1) // safe
+	_, _, _, err = sshConf.Run(fmt.Sprintf("mv %s %s", destTmpPath, remotePath), -1) // safe
 	return err
 }
 
-
 // DownloadF is short for download file, both the remote path and local path should be the absolute path.
-func (ssh_conf *SSHConfig) DownloadF(remotePath, localPath string) error {
-	cli, err := ssh_conf.Cli()
+func (sshConf *SSHConfig) DownloadF(remotePath, localPath string) error {
+	cli, err := sshConf.Cli()
 	if err != nil {
 		return err
 	}

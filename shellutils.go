@@ -1,11 +1,11 @@
 package easyssh
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"errors"
-	"bufio"
 )
 
 // Local run a cmd on local pc.
