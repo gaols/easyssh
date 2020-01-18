@@ -120,9 +120,9 @@ func (sshConf *SSHConfig) Cli() (*ssh.Client, error) {
 
 func loopReader(reader io.Reader, outCh chan string, doneCh chan byte) {
 	go func() {
-		stdoutScanner := bufio.NewScanner(reader)
-		for stdoutScanner.Scan() {
-			outCh <- stdoutScanner.Text()
+		scanner := bufio.NewScanner(reader)
+		for scanner.Scan() {
+			outCh <- scanner.Text()
 		}
 		doneCh <- 1
 	}()
@@ -132,6 +132,9 @@ func loopReader(reader io.Reader, outCh chan string, doneCh chan byte) {
 // as it is run on the remote machine, and another that sends true when the
 // command is done. The sessions and channels will then be closed.
 func (sshConf *SSHConfig) Stream(command string, timeout int) (stdout, stderr chan string, done chan bool, err error) {
+	stdout = make(chan string)
+	stderr = make(chan string)
+	done = make(chan bool)
 	// connect to remote host
 	session, err := sshConf.connect()
 	if err != nil {
@@ -152,7 +155,6 @@ func (sshConf *SSHConfig) Stream(command string, timeout int) (stdout, stderr ch
 	}
 
 	// continuously send the command's output over the channel
-	done = make(chan bool)
 	go func() {
 		defer close(stdout)
 		defer close(stderr)

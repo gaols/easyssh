@@ -6,10 +6,10 @@ import (
 )
 
 var sshConfig = &SSHConfig{
-	User:     "root",
-	Server:   "192.168.2.24",
-	Key:      "/home/gaols/.ssh/id_rsa",
-	Port:     "22",
+	User:   "root",
+	Server: "192.168.2.24",
+	Key:    "/home/gaols/.ssh/id_rsa",
+	Port:   "22",
 }
 
 func TestStream(t *testing.T) {
@@ -44,17 +44,15 @@ func TestStream(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	t.Parallel()
 	commands := []string{
-		"echo test", `for i in $(ls); do echo "$i"; done`, "ls",
+		"cd /root/sfdeploy/projects/ERP3.0.2;mvn clean compile",
 	}
 	for _, cmd := range commands {
-		stdout, stderr, _, err := sshConfig.Run(cmd, 10)
+		_, err := sshConfig.RtRun(cmd, func(out string, lineType int) {
+			fmt.Println(out)
+		}, 50)
 		if err != nil {
-			t.Errorf("Run failed: %s", err)
-		}
-		if stdout == "" {
-			t.Errorf("Output was empty for command: %s,%s,%s", cmd, stdout, stderr)
+			t.FailNow()
 		}
 	}
 }
