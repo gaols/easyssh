@@ -26,7 +26,7 @@ func (sshConf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout i
 	localDirParentPath := filepath.Dir(localDirPath)
 	localDirname := filepath.Base(localDirPath)
 	tgzName := fmt.Sprintf("%s_%s.tar.gz", Sha1(fmt.Sprintf("%s_%d", localDirPath, time.Now().UnixNano())), localDirname)
-	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName)                        // safe
+	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName)                         // safe
 	defer sshConf.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), timeout) // safe
 
 	_, err := Local("cd %s;tar czf %s %s", localDirParentPath, tgzName, localDirname)
@@ -133,7 +133,7 @@ func (sshConf *SSHConfig) Work(fn func(session *ssh.Session) error) error {
 	if err != nil {
 		return err
 	}
-	defer session.Close()
+	defer Close(session)
 	return fn(session)
 }
 
