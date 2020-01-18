@@ -3,6 +3,8 @@ package easyssh
 import (
 	"crypto/sha1"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"strings"
 )
@@ -52,4 +54,11 @@ func IsRegular(path string) bool {
 
 	mode := stat.Mode()
 	return mode.IsRegular()
+}
+
+func Close(c io.Closer) {
+	err := c.Close()
+	if err != nil {
+		log.Println(err)
+	}
 }

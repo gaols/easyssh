@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"strings"
 
 	"net"
@@ -76,22 +77,25 @@ func (sshConf *SSHConfig) connect() (*ssh.Session, error) {
 // Cli create ssh client
 func (sshConf *SSHConfig) Cli() (*ssh.Client, error) {
 	// auths holds the detected ssh auth methods
-	auths := []ssh.AuthMethod{}
+	authMethods := make([]ssh.AuthMethod, 0)
 
 	// figure out what auths are requested, what is supported
 	if sshConf.Password != "" {
-		auths = append(auths, ssh.Password(sshConf.Password))
+		authMethods = append(authMethods, ssh.Password(sshConf.Password))
 	}
 
 	if goutils.IsNotBlank(sshConf.Key) {
 		if pubKey, err := getKeyFile(sshConf.Key); err == nil {
-			auths = append(auths, ssh.PublicKeys(pubKey))
+			authMethods = append(authMethods, ssh.PublicKeys(pubKey))
 		}
 	}
 
 	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-		auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
-		defer sshAgent.Close()
+		authMethods = append(authMethods, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
+		defer func() {
+			err := sshAgent.Close()
+			log.Println(err)
+		}()
 	}
 	// Default port 22
 	sshConf.Port = goutils.DefaultIfBlank(sshConf.Port, "22")
@@ -101,7 +105,7 @@ func (sshConf *SSHConfig) Cli() (*ssh.Client, error) {
 
 	config := &ssh.ClientConfig{
 		User:            sshConf.User,
-		Auth:            auths,
+		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
@@ -114,6 +118,16 @@ func (sshConf *SSHConfig) Cli() (*ssh.Client, error) {
 	return ssh.Dial("tcp", sshConf.Server+":"+sshConf.Port, config)
 }
 
+func loopReader(reader io.Reader, outCh chan string, doneCh chan byte) {
+	go func() {
+		stdoutScanner := bufio.NewScanner(reader)
+		for stdoutScanner.Scan() {
+			outCh <- stdoutScanner.Text()
+		}
+		doneCh <- 1
+	}()
+}
+
 // Stream returns one channel that combines the stdout and stderr of the command
 // as it is run on the remote machine, and another that sends true when the
 // command is done. The sessions and channels will then be closed.
@@ -121,72 +135,55 @@ func (sshConf *SSHConfig) Stream(command string, timeout int) (stdout, stderr ch
 	// connect to remote host
 	session, err := sshConf.connect()
 	if err != nil {
-		return stdout, stderr, done, err
+		return
 	}
-
 	// connect to both outputs (they are of type io.Reader)
 	stdOutReader, err := session.StdoutPipe()
 	if err != nil {
-		return stdout, stderr, done, err
+		return
 	}
 	stderrReader, err := session.StderrPipe()
 	if err != nil {
-		return stdout, stderr, done, err
+		return
 	}
 	err = session.Start(command)
+	if err != nil {
+		return
+	}
 
 	// continuously send the command's output over the channel
-	stdoutChan := make(chan string)
-	stderrChan := make(chan string)
 	done = make(chan bool)
-
 	go func() {
-		defer close(stdoutChan)
-		defer close(stderrChan)
+		defer close(stdout)
+		defer close(stderr)
 		defer close(done)
 
 		go func() {
 			stdoutDone := make(chan byte)
 			stderrDone := make(chan byte)
-
 			// loop stdout
-			go func() {
-				stdoutScanner := bufio.NewScanner(stdOutReader)
-				for stdoutScanner.Scan() {
-					stdoutChan <- stdoutScanner.Text()
-				}
-				stdoutDone <- 1
-			}()
-
+			loopReader(stdOutReader, stdout, stdoutDone)
 			// loop stderr
-			go func() {
-				stderrScanner := bufio.NewScanner(stderrReader)
-				for stderrScanner.Scan() {
-					stderrChan <- stderrScanner.Text()
-				}
-				stderrDone <- 1
-			}()
-
+			loopReader(stderrReader, stderr, stderrDone)
 			<-stdoutDone
 			<-stderrDone
 			done <- true
 		}()
 
 		if timeout <= 0 {
-			// a long timeout simulate wait forever
-			timeout = 24 * 3600
+			timeout = 24 * 3600 // a long timeout simulate wait forever
 		}
 		timeoutChan := time.After(time.Duration(timeout) * time.Second)
 		select {
 		case r := <-done:
 			done <- r
 		case <-timeoutChan:
-			stderrChan <- fmt.Sprintf("Run command timeout: %s", command)
+			stderr <- fmt.Sprintf("Run command timeout: %s", command)
 			done <- false
 		}
 	}()
 
-	return stdoutChan, stderrChan, done, err
+	return
 }
 
 // Run command on remote machine and returns its stdout as a string
@@ -270,8 +267,18 @@ func (sshConf *SSHConfig) RunScript(script string) error {
 			return err
 		}
 
-		go io.Copy(os.Stdout, stdout)
-		go io.Copy(os.Stderr, stderr)
+		go func() {
+			_, err := io.Copy(os.Stdout, stdout)
+			if err != nil {
+				log.Println(err)
+			}
+		}()
+		go func() {
+			_, err := io.Copy(os.Stderr, stderr)
+			if err != nil {
+				log.Println(err)
+			}
+		}()
 
 		err = s.Shell()
 		if err != nil {
