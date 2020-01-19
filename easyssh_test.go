@@ -66,6 +66,8 @@ func TestSSHConfig_Scp(t *testing.T) {
 		panic("Can't run remote command: " + err.Error())
 	} else {
 		fmt.Println("success")
+		out, eOut, _, _ := sshConfig.Run("cat /tmp/target.html", 0)
+		fmt.Println(out, eOut)
 	}
 }
 

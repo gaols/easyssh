@@ -26,7 +26,7 @@ func (sshConf *SSHConfig) SCopyDir(localDirPath, remoteDirPath string, timeout i
 	localDirParentPath := filepath.Dir(localDirPath)
 	localDirname := filepath.Base(localDirPath)
 	tgzName := fmt.Sprintf("%s_%s.tar.gz", Sha1(fmt.Sprintf("%s_%d", localDirPath, time.Now().UnixNano())), localDirname)
-	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName)                         // safe
+	defer Local("cd %s;rm -f %s", localDirParentPath, tgzName)                        // safe
 	defer sshConf.Run(fmt.Sprintf("cd %s;rm -f %s", remoteDirPath, tgzName), timeout) // safe
 
 	_, err := Local("cd %s;tar czf %s %s", localDirParentPath, tgzName, localDirname)
@@ -75,14 +75,17 @@ func (sshConf *SSHConfig) SCopyFile(srcFilePath, destFilePath string) error {
 		}
 
 		go func() {
-			stdin, _ := session.StdinPipe()
+			stdin, err := session.StdinPipe()
+			if err != nil {
+				return
+			}
+			defer Close(stdin)
+			defer Close(src)
 			fmt.Fprintf(stdin, "C%#o %d %s\n", stat.Mode().Perm(), stat.Size(), filepath.Base(destFilePath))
 			if stat.Size() > 0 {
 				io.Copy(stdin, src)
 			}
 			fmt.Fprint(stdin, "\x00")
-			stdin.Close()
-			src.Close()
 		}()
 
 		return session.Run(fmt.Sprintf("scp -t %s", destFilePath))
@@ -161,7 +164,7 @@ func (sshConf *SSHConfig) DownloadF(remotePath, localPath string) error {
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer Close(cli)
 
 	client, err := sftp.NewClient(cli)
 	if err != nil {

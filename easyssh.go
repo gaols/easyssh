@@ -8,19 +8,19 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"golang.org/x/crypto/ssh/agent"
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"strings"
 
-	"net"
 	"os"
 	"time"
 
 	"github.com/gaols/goutils"
 
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
 )
 
 const (
