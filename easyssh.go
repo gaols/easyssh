@@ -93,8 +93,7 @@ func (sshConf *SSHConfig) Cli() (*ssh.Client, error) {
 	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
 		authMethods = append(authMethods, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
 		defer func() {
-			err := sshAgent.Close()
-			log.Println(err)
+			_ = sshAgent.Close()
 		}()
 	}
 	// Default port 22

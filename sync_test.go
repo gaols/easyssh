@@ -1,8 +1,8 @@
 package easyssh
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestSSHConfig_SCopy(t *testing.T) {
