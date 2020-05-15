@@ -110,7 +110,7 @@ func (sshConf *SSHConfig) Cli() (*ssh.Client, error) {
 	}
 
 	// default maximum amount of time for the TCP connection to establish is 10s
-	config.Timeout = time.Second * 10
+	config.Timeout = time.Second * 30
 	if sshConf.Timeout > 0 {
 		config.Timeout = time.Duration(sshConf.Timeout) * time.Second
 	}
